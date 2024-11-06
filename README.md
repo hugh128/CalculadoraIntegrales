@@ -39,13 +39,16 @@ Para ejecutar el proyecto, se necesita Python 3.8 o superior y las siguientes bi
 ## Screenshots
 - Pantalla inicial
 
+![](/screenshots/home.png)
 
 - Integral definida
+![](/screenshots/integral.png)
 
 - Area bajo la curva
+![](/screenshots/area_bajo_curva.png)
 
 - Solidos de revolución
-
+![](/screenshots/solido_de_revolusion.png)
 
 ## Créditos
 
