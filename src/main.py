@@ -229,7 +229,7 @@ def main(page: ft.Page):
                 page.update()
             
             calculate_button = ft.ElevatedButton("Calcular", on_click=calcular_solido)
-            generate_3d_button = ft.ElevatedButton("Generar gráfica en 3D", on_click=calcular_solido)
+            #generate_3d_button = ft.ElevatedButton("Generar gráfica en 3D", on_click=calcular_solido)
             
             content_area.content = ft.Column(
                 controls=[
@@ -238,7 +238,6 @@ def main(page: ft.Page):
                     interval_field,
                     axis_field,
                     calculate_button,
-                    generate_3d_button,
                     result_text,
                     chart
                 ],
