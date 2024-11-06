@@ -1,11 +1,14 @@
 import flet as ft
 from integrales import calcular_integral_definida
+from solidos import generar_solido_revolucion, calcular_volumen_solido
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import sympy as sp
 from flet.matplotlib_chart import MatplotlibChart
+import plotly.graph_objects as go
+from flet.plotly_chart import PlotlyChart
 
 
 def plot_function(func, lower, upper):
@@ -163,22 +166,57 @@ def main(page: ft.Page):
 
         elif pantalla == "Sólidos de revolución":
             input_field = ft.TextField(label="Ingrese la función", width=400)
-            axis_field = ft.TextField(label="Eje de rotación", width=400)
+            interval_field = ft.TextField(label="Intervalo de integración (por ejemplo, 0,2)", width=400)
+            axis_field = ft.TextField(label="Eje de rotación (x o y)", width=400)
             result_text = ft.Text("Resultado: ", size=18)
+            chart = ft.Container(expand=True)
 
             def calcular_solido(e):
-                result_text.value = "Funcionalidad aún no implementada"
+                try:
+                    func = input_field.value
+                    interval = interval_field.value
+                    eje_rotacion = axis_field.value.lower()
+
+                    if not interval:
+                        raise ValueError("El intervalo no puede estar vacío.")
+                    if eje_rotacion not in ['x', 'y']:
+                        raise ValueError("Eje de rotación inválido. Usa 'x' o 'y'.")
+                    
+                    lower_limit, upper_limit = map(float, interval.split(","))
+
+                    volumen = calcular_volumen_solido(func, lower_limit, upper_limit, eje_rotacion)
+                    result_text.value = f"Volumen del solido: {float(volumen):}"
+
+                    fig = generar_solido_revolucion(func, lower_limit, upper_limit, eje_rotacion)
+                    chart.content = MatplotlibChart(fig, expand=True)
+
+                except ValueError as ve:
+                        result_text.value = f"Error: {str(ve)}"
+                        result_text.color = ft.colors.RED
+                except Exception as e:
+                        result_text.value = f"Error: {str(e)}"
+                        result_text.color = ft.colors.RED
+            
                 page.update()
-
+            
             calculate_button = ft.ElevatedButton("Calcular", on_click=calcular_solido)
+            generate_3d_button = ft.ElevatedButton("Generar gráfica en 3D", on_click=calcular_solido)
+            
+            content_area.content = ft.Column(
+                controls=[
+                    ft.Text("Sólidos de revolución", size=18),
+                    input_field,
+                    interval_field,
+                    axis_field,
+                    calculate_button,
+                    generate_3d_button,
+                    result_text,
+                    chart
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            )
 
-            content_area.content = ft.Column([ 
-                ft.Text("Sólidos de revolución", size=18),
-                input_field,
-                axis_field,
-                calculate_button,
-                result_text
-            ])
 
         elif pantalla == "Bienvenida":
             content_area.content = ft.Column([welcome_container])
