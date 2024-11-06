@@ -9,7 +9,22 @@ import sympy as sp
 from flet.matplotlib_chart import MatplotlibChart
 import plotly.graph_objects as go
 from flet.plotly_chart import PlotlyChart
+import re
 
+def preprocess_math_expression(expr: str) -> str:
+    expr = expr.replace('^', '**')
+    
+    def process_sqrt(match):
+        inner = match.group(1)
+        inner = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', inner)
+        return f'sqrt({inner})'
+    
+    expr = re.sub(r'sqrt\((.*?)\)', process_sqrt, expr)
+    
+    expr = re.sub(r'(\d)([a-zA-Z\(])', r'\1*\2', expr)
+    expr = re.sub(r'\)([a-zA-Z\d])', r')*\1', expr)
+    
+    return expr
 
 def plot_function(func, lower, upper):
     x = sp.symbols('x')
@@ -109,7 +124,7 @@ def main(page: ft.Page):
             )
 
         elif pantalla == "Área bajo la curva":
-            input_field = ft.TextField(label="Ingrese la función", width=400)
+            input_field = ft.TextField(label="Ingrese la función", width=400, hint_text="Ejemplo: x^2, sqrt(4*x), sin(x)")
             interval_field = ft.TextField(label="Intervalo de integración (por ejemplo, 0,2)", width=400)
             result_text = ft.Text("Resultado: ", size=18)
             chart = ft.Container(expand=True)
@@ -117,37 +132,51 @@ def main(page: ft.Page):
             def calcular_area(e):
                 try:
                     func = input_field.value
+                    if not func:
+                        raise ValueError("Por favor ingrese una función.")
+                        
                     interval = interval_field.value
-
                     if not interval:
-                        raise ValueError("El intervalo no puede estar vacío.")
-                    lower_limit, upper_limit = map(sp.sympify, interval.split(","))
-
-                    if lower_limit > upper_limit:
-                        result_text.value = "Error: El límite inferior no puede ser mayor que el límite superior."
-                        result_text.color = ft.colors.RED
-                        page.update()
-                        return
-
-                    x = sp.symbols('x')
-                    func_expr = sp.sympify(func)
-                    area = sp.integrate(func_expr, (x, lower_limit, upper_limit))
-                    result_text.value = f"Área bajo la curva: {float(area):.4f}"
-                    result_text.color = ft.colors.BLUE
-
-                    fig = plot_function(func, float(lower_limit), float(upper_limit))
-                    chart.content = MatplotlibChart(fig, expand=True)
-
-                    page.update()
-
+                        raise ValueError("Por favor ingrese un intervalo de integración.")
+                    
+                    # Procesar el intervalo
+                    try:
+                        lower_str, upper_str = interval.split(",")
+                        lower_limit = float(lower_str.strip())
+                        upper_limit = float(upper_str.strip())
+                    except ValueError:
+                        raise ValueError("El intervalo debe ser dos números separados por coma (ejemplo: 0,2)")
+                    
+                    if lower_limit >= upper_limit:
+                        raise ValueError("El límite inferior debe ser menor que el superior.")
+                    
+                    # Preprocesar la función
+                    processed_func = preprocess_math_expression(func)
+                    
+                    # Calcular la integral
+                    x = sp.Symbol('x')
+                    try:
+                        func_expr = sp.sympify(processed_func)
+                        area = float(sp.integrate(func_expr, (x, lower_limit, upper_limit)).evalf())
+                        
+                        result_text.value = f"Área bajo la curva: {area:.4f}"
+                        result_text.color = ft.colors.BLUE
+                        
+                        # Actualizar el gráfico
+                        fig = plot_function(func, lower_limit, upper_limit)
+                        chart.content = MatplotlibChart(fig, expand=True)
+                        
+                    except sp.SympifyError:
+                        raise ValueError("La función ingresada no es válida. Revise la sintaxis.")
+                        
                 except ValueError as ve:
                     result_text.value = f"Error: {str(ve)}"
                     result_text.color = ft.colors.RED
-                    page.update()
                 except Exception as e:
-                    result_text.value = f"Error: {str(e)}"
+                    result_text.value = f"Error inesperado: {str(e)}"
                     result_text.color = ft.colors.RED
-                    page.update()
+                
+                page.update()
 
             calculate_button = ft.ElevatedButton("Calcular", on_click=calcular_area)
 
