@@ -1,4 +1,3 @@
-# calculos/integrales.py
 import sympy as sp
 
 def calcular_integral_definida(funcion, limite_inferior=None, limite_superior=None):
@@ -6,10 +5,13 @@ def calcular_integral_definida(funcion, limite_inferior=None, limite_superior=No
         # Definir la variable simbólica
         x = sp.symbols('x')
         
-        # Convertir la expresión de texto a una expresión de sympy
-        expr = sp.sympify(funcion)
+        # Intentar convertir la expresión de texto a una expresión simbólica de sympy
+        try:
+            expr = sp.sympify(funcion)
+        except sp.SympifyError:
+            raise ValueError("La expresión ingresada no es válida. Asegúrese de usar una notación matemática correcta, por ejemplo, x**2 o sin(x).")
         
-        # Verificar si la expresión es válida
+        # Verificar si la expresión es válida para el cálculo simbólico
         if not isinstance(expr, sp.Basic):
             raise ValueError("La expresión ingresada no es válida para cálculo simbólico.")
         
@@ -24,7 +26,7 @@ def calcular_integral_definida(funcion, limite_inferior=None, limite_superior=No
             resultado = sp.integrate(expr, (x, limite_inferior, limite_superior))  # Integral definida
         
         return resultado
-    except sp.SympifyError:
-        raise ValueError("La expresión ingresada no es válida. Asegúrese de usar una notación correcta.")
+    except ValueError as ve:
+        raise ve  # Propaga el error de valor
     except Exception as e:
-        raise ValueError(f"Error en el cálculo de la integral: {str(e)}")
+        raise Exception(f"Error al calcular la integral: {str(e)}")  # Manejo de cualquier otro error

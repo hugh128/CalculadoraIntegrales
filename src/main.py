@@ -1,5 +1,48 @@
 import flet as ft
-from integrales import calcular_integral_definida  # Importar la función
+from integrales import calcular_integral_definida
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+import sympy as sp
+from flet.matplotlib_chart import MatplotlibChart
+
+
+def plot_function(func, lower, upper):
+    x = sp.symbols('x')
+
+    func_expr = sp.sympify(func)
+
+    f = sp.lambdify(x, func_expr, 'numpy')
+
+    x_vals = np.linspace(lower - (upper - lower) * 0.2, upper + (upper - lower) * 0.2, 1000)
+    y_vals = f(x_vals)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    margin = (upper - lower) * 0.2
+    ax.set_xlim(lower - margin, upper + margin)
+    ax.set_ylim(min(y_vals) - margin, max(y_vals) + margin)
+
+    ax.plot(x_vals, y_vals, label=f'Función: {func}')
+
+    x_fill = np.linspace(lower, upper, 100)
+    y_fill = f(x_fill)
+    ax.fill_between(x_fill, 0, y_fill, color='skyblue', alpha=0.5, label='Área bajo la curva')
+
+    ax.axhline(0, color='black', linewidth=1)
+    ax.axvline(0, color='black', linewidth=1)
+
+    ax.set_xlabel('Eje X')
+    ax.set_ylabel('Eje Y')
+
+    ax.set_title('Gráfica de la función y área bajo la curva')
+
+    ax.grid(True)
+    ax.legend()
+
+    return fig
+
 
 def main(page: ft.Page):
     page.adaptive = True
@@ -17,37 +60,40 @@ def main(page: ft.Page):
                     func = input_field.value
                     lower = lower_limit.value if lower_limit.value else None
                     upper = upper_limit.value if upper_limit.value else None
-                    
+
                     if lower is not None and upper is not None:
-                        lower = float(lower)
-                        upper = float(upper)
+                        lower = sp.sympify(lower)
+                        upper = sp.sympify(upper)
+
                         if lower > upper:
-                            raise ValueError("El límite inferior no puede ser superior al límite superior.")
-                    
+                            result_text.value = "Error: El límite inferior no puede ser mayor que el límite superior."
+                            result_text.color = ft.colors.RED
+                            page.update()
+                            return
+
                     if lower is None and upper is None:
                         integral_result = calcular_integral_definida(func)
                         integral_result_formatted = f"Integral indefinida: {integral_result}"
                     else:
                         integral_result = calcular_integral_definida(func, lower, upper)
                         integral_result_formatted = f"Resultado: {integral_result:.4f}"
-                    
-                    result_text.value = integral_result_formatted
 
+                    result_text.value = integral_result_formatted
                     result_text.color = ft.colors.BLUE
-                    
+
                 except ValueError as ve:
                     result_text.value = f"Error: {str(ve)}"
                     result_text.color = ft.colors.RED
                 except Exception as e:
                     result_text.value = f"Error: {str(e)}"
                     result_text.color = ft.colors.RED
-                    
+
                 page.update()
 
             calculate_button = ft.ElevatedButton("Calcular", on_click=calcular_integral)
 
             content_area.content = ft.Container(
-                content=ft.Column([
+                content=ft.Column([ 
                     ft.Text("Integral definida", size=18),
                     input_field,
                     ft.Row([lower_limit, upper_limit]),
@@ -61,22 +107,59 @@ def main(page: ft.Page):
 
         elif pantalla == "Área bajo la curva":
             input_field = ft.TextField(label="Ingrese la función", width=400)
-            interval_field = ft.TextField(label="Intervalo de integración", width=400)
+            interval_field = ft.TextField(label="Intervalo de integración (por ejemplo, 0,2)", width=400)
             result_text = ft.Text("Resultado: ", size=18)
+            chart = ft.Container(expand=True)
 
             def calcular_area(e):
-                result_text.value = "Funcionalidad aún no implementada"
-                page.update()
+                try:
+                    func = input_field.value
+                    interval = interval_field.value
+
+                    if not interval:
+                        raise ValueError("El intervalo no puede estar vacío.")
+                    lower_limit, upper_limit = map(sp.sympify, interval.split(","))
+
+                    if lower_limit > upper_limit:
+                        result_text.value = "Error: El límite inferior no puede ser mayor que el límite superior."
+                        result_text.color = ft.colors.RED
+                        page.update()
+                        return
+
+                    x = sp.symbols('x')
+                    func_expr = sp.sympify(func)
+                    area = sp.integrate(func_expr, (x, lower_limit, upper_limit))
+                    result_text.value = f"Área bajo la curva: {float(area):.4f}"
+                    result_text.color = ft.colors.BLUE
+
+                    fig = plot_function(func, float(lower_limit), float(upper_limit))
+                    chart.content = MatplotlibChart(fig, expand=True)
+
+                    page.update()
+
+                except ValueError as ve:
+                    result_text.value = f"Error: {str(ve)}"
+                    result_text.color = ft.colors.RED
+                    page.update()
+                except Exception as e:
+                    result_text.value = f"Error: {str(e)}"
+                    result_text.color = ft.colors.RED
+                    page.update()
 
             calculate_button = ft.ElevatedButton("Calcular", on_click=calcular_area)
 
-            content_area.content = ft.Column([
-                ft.Text("Área bajo la curva", size=18),
-                input_field,
-                interval_field,
-                calculate_button,
-                result_text
-            ])
+            content_area.content = ft.Column(
+                controls=[ 
+                    ft.Text("Área bajo la curva", size=18),
+                    input_field,
+                    interval_field,
+                    calculate_button,
+                    result_text,
+                    chart
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            )
 
         elif pantalla == "Sólidos de revolución":
             input_field = ft.TextField(label="Ingrese la función", width=400)
@@ -89,7 +172,7 @@ def main(page: ft.Page):
 
             calculate_button = ft.ElevatedButton("Calcular", on_click=calcular_solido)
 
-            content_area.content = ft.Column([
+            content_area.content = ft.Column([ 
                 ft.Text("Sólidos de revolución", size=18),
                 input_field,
                 axis_field,
@@ -99,10 +182,9 @@ def main(page: ft.Page):
 
         elif pantalla == "Bienvenida":
             content_area.content = ft.Column([welcome_container])
-        
+
         page.update()
 
-    # Mensaje introductorio
     welcome_message = ft.Text(
         "Bienvenido a la Calculadora de Integrales. "
         "Seleccione una opción del menú para comenzar a calcular integrales, "
@@ -111,7 +193,6 @@ def main(page: ft.Page):
         size=16
     )
 
-    # Contenedor para el mensaje de bienvenida
     welcome_container = ft.Container(
         content=welcome_message,
         alignment=ft.alignment.center,
@@ -119,15 +200,13 @@ def main(page: ft.Page):
         padding=10
     )
 
-    # Barra superior de la aplicación con ícono de "Home" a la izquierda
     app_bar = ft.AppBar(
         title=ft.Text("Calculadora de Integrales", text_align="center"),
         center_title=True,
         bgcolor=ft.colors.CYAN,
-        leading=ft.IconButton(ft.icons.HOME, on_click=lambda e: actualizar_pantalla("Bienvenida"))  # Ícono a la izquierda
+        leading=ft.IconButton(ft.icons.HOME, on_click=lambda e: actualizar_pantalla("Bienvenida"))
     )
 
-    # Menú de navegación personalizado
     nav_menu = ft.Container(
         width=220,
         bgcolor=ft.colors.GREY_200,
@@ -160,22 +239,17 @@ def main(page: ft.Page):
         )
     )
 
-    # Contenedor para el área de contenido inicial, con alineación centrada
     content_area = ft.Container(
-        expand=True,  # Hace que el contenedor ocupe todo el espacio disponible
-        alignment=ft.alignment.center,  # Centra el contenido tanto vertical como horizontalmente
-        content=ft.Column([welcome_container]),  # Muestra el mensaje de bienvenida por defecto
-        bgcolor=ft.colors.WHITE,
-        padding=20
+        expand=True,
+        alignment=ft.alignment.center,
+        padding=10
     )
 
-    # Estructura de la página
-    page.appbar = app_bar
-    main_view = ft.Row(
-        [nav_menu, content_area],
-        expand=True
+    page.add(
+        app_bar,
+        ft.Row([nav_menu, content_area], expand=True)
     )
 
-    page.add(ft.Column([main_view], expand=True))
+    actualizar_pantalla("Bienvenida")
 
-ft.app(main)
+ft.app(target=main)
