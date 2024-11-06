@@ -1,4 +1,3 @@
-# src/main.py
 import flet as ft
 from integrales import calcular_integral_definida  # Importar la función
 
@@ -6,34 +5,59 @@ def main(page: ft.Page):
     page.adaptive = True
     page.title = "Calculadora de Integrales"
 
-    # Función para actualizar el área de contenido según la opción seleccionada
     def actualizar_pantalla(pantalla):
         if pantalla == "Integral definida":
             input_field = ft.TextField(label="Ingrese la función", width=400)
-            lower_limit = ft.TextField(label="Límite Inferior (opcional)", width=200)
-            upper_limit = ft.TextField(label="Límite Superior (opcional)", width=200)
+            lower_limit = ft.TextField(label="Límite Inferior (opcional)", width=195)
+            upper_limit = ft.TextField(label="Límite Superior (opcional)", width=195)
             result_text = ft.Text("Resultado: ", size=18)
 
             def calcular_integral(e):
                 try:
                     func = input_field.value
-                    lower = float(lower_limit.value) if lower_limit.value else 0
-                    upper = float(upper_limit.value) if upper_limit.value else 1
-                    integral_result = calcular_integral_definida(func, lower, upper)
-                    result_text.value = f"Resultado: {integral_result}"
+                    lower = lower_limit.value if lower_limit.value else None
+                    upper = upper_limit.value if upper_limit.value else None
+                    
+                    if lower is not None and upper is not None:
+                        lower = float(lower)
+                        upper = float(upper)
+                        if lower > upper:
+                            raise ValueError("El límite inferior no puede ser superior al límite superior.")
+                    
+                    if lower is None and upper is None:
+                        integral_result = calcular_integral_definida(func)
+                        integral_result_formatted = f"Integral indefinida: {integral_result}"
+                    else:
+                        integral_result = calcular_integral_definida(func, lower, upper)
+                        integral_result_formatted = f"Resultado: {integral_result:.4f}"
+                    
+                    result_text.value = integral_result_formatted
+
+                    result_text.color = ft.colors.BLUE
+                    
+                except ValueError as ve:
+                    result_text.value = f"Error: {str(ve)}"
+                    result_text.color = ft.colors.RED
                 except Exception as e:
                     result_text.value = f"Error: {str(e)}"
+                    result_text.color = ft.colors.RED
+                    
                 page.update()
 
             calculate_button = ft.ElevatedButton("Calcular", on_click=calcular_integral)
 
-            content_area.content = ft.Column([
-                ft.Text("Integral definida", size=18),
-                input_field,
-                ft.Row([lower_limit, upper_limit]),
-                calculate_button,
-                result_text
-            ])
+            content_area.content = ft.Container(
+                content=ft.Column([
+                    ft.Text("Integral definida", size=18),
+                    input_field,
+                    ft.Row([lower_limit, upper_limit]),
+                    calculate_button,
+                    result_text
+                ]),
+                alignment=ft.alignment.center,
+                width=500,
+                padding=20
+            )
 
         elif pantalla == "Área bajo la curva":
             input_field = ft.TextField(label="Ingrese la función", width=400)
@@ -155,4 +179,3 @@ def main(page: ft.Page):
     page.add(ft.Column([main_view], expand=True))
 
 ft.app(main)
-
